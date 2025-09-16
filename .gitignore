@@ -1,3 +1,19 @@
+# Qt / CMake / Build files
+build/
+debug/
+release/
+*.o
+*.obj
+*.exe
+*.dll
+*.user
+*.pro.user
+*.qmake.stash
+*.log
+*.moc
+*.rcc
+*.ui
+
 # Prerequisites
 *.d
 
