@@ -1,0 +1,29 @@
+# Каталоги сборки
+build/
+debug/
+release/
+
+# Qt файлы сборки
+*.pro.user
+*.pro.user.*
+*.qmake.stash
+
+# Makefiles и CMake временные файлы
+Makefile
+Makefile.*
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+
+# Системные файлы Windows
+Thumbs.db
+*.exe
+*.dll
+*.obj
+*.pdb
+
+# Игнорировать всё кроме исходников
+*
+!src/
+!src/**/*.cpp
+!src/**/*.h
