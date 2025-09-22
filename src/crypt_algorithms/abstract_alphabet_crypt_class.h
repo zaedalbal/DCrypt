@@ -21,6 +21,7 @@ protected:
     AlphabetType detectAlphabet(const QString& text) const; // определение типа алфавита
     bool isRussianChar(QChar ch) const;
     bool isEnglishChar(QChar ch) const;
+    QString filterText(const QString& text, AlphabetType alphaType, bool removeSpaces = false) const; // новый метод фильтрации
     QString russianAlphabet = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
     QString englishAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 

@@ -38,10 +38,10 @@ int Crypt_Caesar::check_shift() const
 
 QChar Crypt_Caesar::shiftChar(QChar ch, int shift_value, const QString& alphabet) const
 {
-    if(!alphabet.contains(ch.toUpper()))
+    if(!alphabet.contains(ch.toLower()))
         return ch;
 
-    int index = alphabet.indexOf(ch.toUpper());
+    int index = alphabet.indexOf(ch.toLower());
     if(index == -1)
         return ch;
 
@@ -50,7 +50,7 @@ QChar Crypt_Caesar::shiftChar(QChar ch, int shift_value, const QString& alphabet
         newIndex += alphabet.length();
 
     QChar result = alphabet[newIndex];
-    return result.toLower();
+    return result;
 }
 
 QByteArray Crypt_Caesar::crypt(const QString& data)
@@ -58,39 +58,28 @@ QByteArray Crypt_Caesar::crypt(const QString& data)
     if(data.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ВХОДНЫЕ ДАННЫЕ]");
 
-    QString processedData = data.toLower();
-
-    AlphabetType alphaType = detectAlphabet(processedData);
+    AlphabetType alphaType = detectAlphabet(data);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
 
     if(alphaType == AlphabetType::NONE)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ ШИФРОВАНИЯ]");
 
+    // Фильтруем текст - удаляем все лишние символы
+    QString filteredData = filterText(data, alphaType, removeSpaces);
+
+    if(filteredData.isEmpty())
+        return QByteArray("[ОШИБКА: ПОСЛЕ ФИЛЬТРАЦИИ НЕ ОСТАЛОСЬ СИМВОЛОВ]");
+
     currentAlphabet = alphaType;
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString result;
-    for(const QChar& ch : processedData)
+    for(const QChar& ch : filteredData)
     {
-        if(ch == ' ' && removeSpaces)
-        {
-            continue;
-        }
-
-        if(alphabet.contains(ch.toUpper()) || ch.isDigit())
-        {
-            result += shiftChar(ch, shift, alphabet);
-        }
-        else
-        {
-            if(!removeSpaces || ch != ' ')
-            {
-                result += ch;
-            }
-        }
+        result += shiftChar(ch, shift, alphabet);
     }
 
     return result.toUtf8();
@@ -105,8 +94,6 @@ QByteArray Crypt_Caesar::decrypt(const QByteArray& encryptedData)
     if(encrypted.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ЗАШИФРОВАННЫЕ ДАННЫЕ]");
 
-    encrypted = encrypted.toLower();
-
     AlphabetType alphaType = detectAlphabet(encrypted);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
@@ -115,20 +102,13 @@ QByteArray Crypt_Caesar::decrypt(const QByteArray& encryptedData)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ РАСШИФРОВКИ]");
 
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString result;
     for(const QChar& ch : encrypted)
     {
-        if(alphabet.contains(ch.toUpper()) || ch.isDigit())
-        {
-            result += shiftChar(ch, -shift, alphabet);
-        }
-        else
-        {
-            result += ch;
-        }
+        result += shiftChar(ch, -shift, alphabet);
     }
 
     return result.toUtf8();

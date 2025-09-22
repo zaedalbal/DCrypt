@@ -73,44 +73,29 @@ QByteArray Crypt_Gronsfeld::crypt(const QString& data)
     if(data.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ВХОДНЫЕ ДАННЫЕ]");
 
-    QString processedData = data.toLower();
-
-    AlphabetType alphaType = detectAlphabet(processedData);
+    AlphabetType alphaType = detectAlphabet(data);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
 
     if(alphaType == AlphabetType::NONE)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ ШИФРОВАНИЯ]");
 
+    // Фильтруем текст - удаляем все лишние символы
+    QString filteredData = filterText(data, alphaType, removeSpaces);
+
+    if(filteredData.isEmpty())
+        return QByteArray("[ОШИБКА: ПОСЛЕ ФИЛЬТРАЦИИ НЕ ОСТАЛОСЬ СИМВОЛОВ]");
+
     currentAlphabet = alphaType;
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : processedData)
+    for(int i = 0; i < filteredData.length(); ++i)
     {
-        if(ch == ' ' && removeSpaces)
-        {
-            continue;
-        }
-
-        if(alphabet.contains(ch))
-        {
-            int shift = numericKey[keyIndex % numericKey.length()].digitValue();
-            result += encryptChar(ch, shift, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            if(!removeSpaces || ch != ' ')
-            {
-                result += ch;
-            }
-        }
+        int shift = numericKey[i % numericKey.length()].digitValue();
+        result += encryptChar(filteredData[i], shift, alphabet);
     }
 
     return result.toUtf8();
@@ -125,8 +110,6 @@ QByteArray Crypt_Gronsfeld::decrypt(const QByteArray& encryptedData)
     if(encrypted.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ЗАШИФРОВАННЫЕ ДАННЫЕ]");
 
-    encrypted = encrypted.toLower();
-
     AlphabetType alphaType = detectAlphabet(encrypted);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
@@ -135,25 +118,14 @@ QByteArray Crypt_Gronsfeld::decrypt(const QByteArray& encryptedData)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ РАСШИФРОВКИ]");
 
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : encrypted)
+    for(int i = 0; i < encrypted.length(); ++i)
     {
-        if(alphabet.contains(ch))
-        {
-            int shift = numericKey[keyIndex % numericKey.length()].digitValue();
-            result += decryptChar(ch, shift, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            result += ch;
-        }
+        int shift = numericKey[i % numericKey.length()].digitValue();
+        result += decryptChar(encrypted[i], shift, alphabet);
     }
 
     return result.toUtf8();

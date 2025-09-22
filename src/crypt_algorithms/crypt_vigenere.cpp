@@ -2,7 +2,7 @@
 
 Crypt_Vigenere::Crypt_Vigenere() : Crypt_Alphabet_Abs()
 {
-    keyword = "ключ";
+    keyword = "key"; // используем английский по умолчанию
     currentAlphabet = AlphabetType::NONE;
     removeSpaces = false;
 }
@@ -11,7 +11,7 @@ void Crypt_Vigenere::set_key(const QString& data)
 {
     if(data.isEmpty())
     {
-        keyword = "ключ";
+        keyword = "key";
     }
     else
     {
@@ -53,7 +53,7 @@ QString Crypt_Vigenere::prepareKeyword(const QString& key, AlphabetType alphaTyp
 
     if(prepared.isEmpty())
     {
-        prepared = (alphaType == AlphabetType::RUSSIAN) ? "ключ" : "key";
+        prepared = (alphaType == AlphabetType::RUSSIAN) ? "абвг" : "key";
     }
 
     return prepared;
@@ -61,9 +61,6 @@ QString Crypt_Vigenere::prepareKeyword(const QString& key, AlphabetType alphaTyp
 
 QChar Crypt_Vigenere::encryptChar(QChar ch, QChar key_char, const QString& alphabet) const
 {
-    if(!alphabet.contains(ch))
-        return ch;
-
     int textIndex = alphabet.indexOf(ch);
     int keyIndex = alphabet.indexOf(key_char);
 
@@ -76,9 +73,6 @@ QChar Crypt_Vigenere::encryptChar(QChar ch, QChar key_char, const QString& alpha
 
 QChar Crypt_Vigenere::decryptChar(QChar ch, QChar key_char, const QString& alphabet) const
 {
-    if(!alphabet.contains(ch))
-        return ch;
-
     int textIndex = alphabet.indexOf(ch);
     int keyIndex = alphabet.indexOf(key_char);
 
@@ -94,46 +88,31 @@ QByteArray Crypt_Vigenere::crypt(const QString& data)
     if(data.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ВХОДНЫЕ ДАННЫЕ]");
 
-    QString processedData = data.toLower();
-
-    AlphabetType alphaType = detectAlphabet(processedData);
+    AlphabetType alphaType = detectAlphabet(data);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
 
     if(alphaType == AlphabetType::NONE)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ ШИФРОВАНИЯ]");
 
+    // Фильтруем текст - удаляем все лишние символы
+    QString filteredData = filterText(data, alphaType, removeSpaces);
+
+    if(filteredData.isEmpty())
+        return QByteArray("[ОШИБКА: ПОСЛЕ ФИЛЬТРАЦИИ НЕ ОСТАЛОСЬ СИМВОЛОВ]");
+
     currentAlphabet = alphaType;
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString prepared_key = prepareKeyword(keyword, alphaType);
 
     QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : processedData)
+    for(int i = 0; i < filteredData.length(); ++i)
     {
-        if(ch == ' ' && removeSpaces)
-        {
-            continue;
-        }
-
-        if(alphabet.contains(ch))
-        {
-            QChar key_char = prepared_key[keyIndex % prepared_key.length()];
-            result += encryptChar(ch, key_char, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            if(!removeSpaces || ch != ' ')
-            {
-                result += ch;
-            }
-        }
+        QChar key_char = prepared_key[i % prepared_key.length()];
+        result += encryptChar(filteredData[i], key_char, alphabet);
     }
 
     return result.toUtf8();
@@ -148,8 +127,6 @@ QByteArray Crypt_Vigenere::decrypt(const QByteArray& encryptedData)
     if(encrypted.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ЗАШИФРОВАННЫЕ ДАННЫЕ]");
 
-    encrypted = encrypted.toLower();
-
     AlphabetType alphaType = detectAlphabet(encrypted);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
@@ -158,27 +135,16 @@ QByteArray Crypt_Vigenere::decrypt(const QByteArray& encryptedData)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ РАСШИФРОВКИ]");
 
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString prepared_key = prepareKeyword(keyword, alphaType);
 
     QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : encrypted)
+    for(int i = 0; i < encrypted.length(); ++i)
     {
-        if(alphabet.contains(ch))
-        {
-            QChar key_char = prepared_key[keyIndex % prepared_key.length()];
-            result += decryptChar(ch, key_char, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            result += ch;
-        }
+        QChar key_char = prepared_key[i % prepared_key.length()];
+        result += decryptChar(encrypted[i], key_char, alphabet);
     }
 
     return result.toUtf8();

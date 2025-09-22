@@ -95,61 +95,37 @@ QByteArray Crypt_Vernam::crypt(const QString& data)
     if(data.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ВХОДНЫЕ ДАННЫЕ]");
 
-    QString processedData = data.toLower();
-
-    AlphabetType alphaType = detectAlphabet(processedData);
+    AlphabetType alphaType = detectAlphabet(data);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
 
     if(alphaType == AlphabetType::NONE)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ ШИФРОВАНИЯ]");
 
+    // Фильтруем текст - удаляем все лишние символы
+    QString filteredData = filterText(data, alphaType, removeSpaces);
+
+    if(filteredData.isEmpty())
+        return QByteArray("[ОШИБКА: ПОСЛЕ ФИЛЬТРАЦИИ НЕ ОСТАЛОСЬ СИМВОЛОВ]");
+
     currentAlphabet = alphaType;
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString prepared_key = prepareKey(oneTimePad, alphaType);
 
-    // кол-во символов для шифрования
-    int symbolCount = 0;
-    for(const QChar& ch : processedData)
-    {
-        if(alphabet.contains(ch))
-        {
-            symbolCount++;
-        }
-    }
-
-    if(prepared_key.length() < symbolCount)
+    // Проверяем длину ключа после фильтрации
+    if(prepared_key.length() < filteredData.length())
     {
         return QByteArray("[ОШИБКА: ОДНОРАЗОВЫЙ БЛОКНОТ СЛИШКОМ КОРОТКИЙ]");
     }
 
     QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : processedData)
+    for(int i = 0; i < filteredData.length(); ++i)
     {
-        if(ch == ' ' && removeSpaces)
-        {
-            continue;
-        }
-
-        if(alphabet.contains(ch))
-        {
-            QChar keyChar = prepared_key[keyIndex];
-            result += encryptChar(ch, keyChar, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            if(!removeSpaces || ch != ' ')
-            {
-                result += ch;
-            }
-        }
+        QChar keyChar = prepared_key[i];
+        result += encryptChar(filteredData[i], keyChar, alphabet);
     }
 
     return result.toUtf8();
@@ -164,8 +140,6 @@ QByteArray Crypt_Vernam::decrypt(const QByteArray& encryptedData)
     if(encrypted.isEmpty())
         return QByteArray("[ОШИБКА: ПУСТЫЕ ЗАШИФРОВАННЫЕ ДАННЫЕ]");
 
-    encrypted = encrypted.toLower();
-
     AlphabetType alphaType = detectAlphabet(encrypted);
     if(alphaType == AlphabetType::MIXED)
         return QByteArray("[ОШИБКА: СМЕШАННЫЕ АЛФАВИТЫ НЕ ПОДДЕРЖИВАЮТСЯ]");
@@ -174,31 +148,21 @@ QByteArray Crypt_Vernam::decrypt(const QByteArray& encryptedData)
         return QByteArray("[ОШИБКА: НЕ НАЙДЕНЫ БУКВЫ ДЛЯ РАСШИФРОВКИ]");
 
     QString alphabet = (alphaType == AlphabetType::RUSSIAN) ?
-                           russianAlphabet + "0123456789" :
-                           englishAlphabet + "0123456789";
-    alphabet = alphabet.toLower();
+                           russianAlphabet.toLower() + "0123456789" :
+                           englishAlphabet.toLower() + "0123456789";
 
     QString prepared_key = prepareKey(oneTimePad, alphaType);
 
-    QString result;
-    int keyIndex = 0;
-
-    for(const QChar& ch : encrypted)
+    if(prepared_key.length() < encrypted.length())
     {
-        if(alphabet.contains(ch))
-        {
-            if(keyIndex >= prepared_key.length())
-            {
-                return QByteArray("[ОШИБКА: ОДНОРАЗОВЫЙ БЛОКНОТ СЛИШКОМ КОРОТКИЙ ДЛЯ РАСШИФРОВКИ]");
-            }
-            QChar keyChar = prepared_key[keyIndex];
-            result += decryptChar(ch, keyChar, alphabet);
-            keyIndex++;
-        }
-        else
-        {
-            result += ch;
-        }
+        return QByteArray("[ОШИБКА: ОДНОРАЗОВЫЙ БЛОКНОТ СЛИШКОМ КОРОТКИЙ ДЛЯ РАСШИФРОВКИ]");
+    }
+
+    QString result;
+    for(int i = 0; i < encrypted.length(); ++i)
+    {
+        QChar keyChar = prepared_key[i];
+        result += decryptChar(encrypted[i], keyChar, alphabet);
     }
 
     return result.toUtf8();
